@@ -1,0 +1,136 @@
+SECTION_MAP = [
+    ("sales_fluctuation",          "Sales Fluctuation"),
+    ("profitability",               "Profitability"),
+    ("high_leverage",               "High Leverage"),
+    ("liquidity_position",          "Liquidity Position"),
+    ("capital_fluctuation",         "Capital Fluctuation"),
+    ("unsecured_loans",             "Unsecured Loans"),
+    ("notes_on_accounts",           "Notes on Accounts / Auditor Remarks"),
+    ("contingent_liabilities",      "Contingent Liabilities"),
+    ("unhedged_forex_exposure",     "Unhedged Forex Exposure"),
+    ("investment_in_group_companies","Investment in Group Companies"),
+]
+ 
+ 
+def _json_to_html(company_name: str, json_data: dict) -> str:
+    """
+    Convert company_name + json_data dict → styled HTML string
+    matching the Financial Analysis Report template.
+    """
+ 
+    # Build ordered list of (display_title, text) tuples
+    known_keys  = [k for k, _ in SECTION_MAP]
+    label_lookup = {k: v for k, v in SECTION_MAP}
+ 
+    sections = []
+ 
+    # 1. Add known keys in defined order (only if present in json_data)
+    for key, label in SECTION_MAP:
+        if key in json_data:
+            sections.append((label, json_data[key]))
+ 
+    # 2. Append any extra keys the LLM returned that aren't in SECTION_MAP
+    for key, value in json_data.items():
+        if key not in known_keys:
+            label = key.replace("_", " ").title()
+            sections.append((label, value))
+ 
+    # ── Build section HTML ────────────────────────────────────────────────────
+    sections_html = ""
+    for i, (title, text) in enumerate(sections, start=1):
+        sections_html += f"""
+    <div class="section">
+        <div class="section-title">{i}. {title}</div>
+        <div class="section-text">{text}</div>
+    </div>"""
+ 
+    # ── Full HTML ─────────────────────────────────────────────────────────────
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{
+            font-family: "Segoe UI", Arial, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 40px;
+            color: #2c3e50;
+        }}
+        .container {{
+            max-width: 1000px;
+            margin: auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+        }}
+        .header {{
+            border-bottom: 3px solid #1f4e79;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }}
+        .header h1 {{
+            margin: 0;
+            font-size: 28px;
+            color: #1f4e79;
+        }}
+        .header p {{
+            margin: 5px 0 0;
+            color: #666;
+            font-size: 14px;
+        }}
+        .section {{
+            margin-bottom: 22px;
+            padding: 18px 20px;
+            border-left: 4px solid #1f4e79;
+            background: #f9fbfd;
+            border-radius: 4px;
+        }}
+        .section-title {{
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #1f4e79;
+        }}
+        .section-text {{
+            font-size: 14px;
+            line-height: 1.6;
+        }}
+        .footer {{
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+        }}
+    </style>
+</head>
+<body>
+<div class="container">
+ 
+    <div class="header">
+        <h1>Financial Analysis Report</h1>
+        <p>{company_name} — Automated Financial Statement Commentary</p>
+    </div>
+ 
+    {sections_html}
+ 
+    <div class="footer">
+        Generated using SIDBI AI Engine
+    </div>
+ 
+</div>
+</body>
+</html>"""
+
+
+html_output  = _json_to_html(company_name, llm_response["json_data"])
+st.session_state["html_output"]    = html_output
+st.session_state["analysis_ready"] = True
+ 
+ 
+if st.session_state.get("analysis_ready") and st.session_state.get("html_output"):
+        st.components.v1.html(st.session_state["html_output"], height=560, scrolling=True)
+ 
