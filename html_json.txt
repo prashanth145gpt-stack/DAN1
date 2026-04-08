@@ -134,3 +134,58 @@ st.session_state["analysis_ready"] = True
 if st.session_state.get("analysis_ready") and st.session_state.get("html_output"):
         st.components.v1.html(st.session_state["html_output"], height=560, scrolling=True)
  
+
+
+#######
+st.markdown("""
+<style>
+.tile {
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    transition: 0.3s;
+}
+
+.tile:hover {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.tile-grey {
+    background-color: #f0f0f0;
+}
+
+.tile-yellow {
+    background-color: #fff3cd;
+}
+
+.tile-green {
+    background-color: #d4edda;
+}
+</style>
+""", unsafe_allow_html=True)
+#######
+
+def get_tile_class(module_key):
+    if modules[module_key]["completed"]:
+        return "tile tile-green"
+    elif modules[module_key]["uploaded"]:
+        return "tile tile-yellow"
+    else:
+        return "tile tile-grey"
+
+######
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("Balance Sheet"):
+        st.session_state["active_module"] = "balance_sheet"
+    st.markdown(f"<div class='{get_tile_class('balance_sheet')}'>Balance Sheet</div>", unsafe_allow_html=True)
+
+with col2:
+    if st.button("Risk Analysis"):
+        st.session_state["active_module"] = "risk_analysis"
+    st.markdown(f"<div class='{get_tile_class('risk_analysis')}'>Risk Analysis</div>", unsafe_allow_html=True)
