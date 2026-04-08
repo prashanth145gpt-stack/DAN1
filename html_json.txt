@@ -495,32 +495,29 @@ div[data-testid="stFileUploader"] button[kind="secondary"]::after {
 
 
 
-# ================== FINAL SUBMIT ==================
+        
+
+
 
 st.markdown("---")
-st.subheader("Finalize Submission")
 
-modules = st.session_state["modules"]
+left_space, right_button = st.columns([4, 1])
 
-# Check if all modules completed
-all_completed = all(m.get("completed") for m in modules.values())
+with right_button:
+    if st.button("Submit All Analysis"):
+        modules = st.session_state["modules"]
+        all_completed = all(m.get("completed") for m in modules.values())
 
-if st.button("Submit All Analysis"):
+        if not all_completed:
+            st.error("Please complete all modules before submitting")
+        else:
+            final_data = {}
 
-    if not all_completed:
-        st.error("Please complete all modules before submitting")
-    else:
-        # Collect all responses
-        final_data = {}
+            for module_name, module_data in modules.items():
+                final_data[module_name] = {
+                    "prompt": module_data.get("prompt"),
+                    "response": module_data.get("response")
+                }
 
-        for module_name, module_data in modules.items():
-            final_data[module_name] = {
-                "prompt": module_data.get("prompt"),
-                "response": module_data.get("response")
-            }
-
-        st.success("All modules submitted successfully ✅")
-
-        # 🔹 For now just display (later you can send to API / DB)
-        st.write("Final Output:")
-        st.json(final_data)
+            st.success("All modules submitted successfully ✅")
+            st.json(final_data)
