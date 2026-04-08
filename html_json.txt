@@ -171,7 +171,7 @@ if "modules" not in st.session_state:
             "completed":False
         }
     }
-if "active_moudule" not in st.session_state:
+if "active_module" not in st.session_state:
     st.session_state["active_module"] = "balance_sheet"
 
 html = f"""
@@ -284,6 +284,8 @@ with left:
         label_visibility="collapsed"   # hides default label
     )
     if uploaded_files:
+        active_module = st.session_state["active_module"]
+        st.session_state["modules"][active_module]["uploaded"] = True
         st.session_state["raw_docs"] = [
             {
                 "name": f.name,
@@ -298,13 +300,15 @@ with left:
     #     st.session_state["files"] = uploaded_files
     if st.button("Process Documents"):
 
-        if "raw_docs" not in st.session_state:
+        active_module = st.session_state["active_module"]
+        module_data = st.session_state["modules"][active_module]
+        if not module_data.get("raw_docs"):
             st.error("Upload files first")
         else:
             results = []
             progress = st.progress(0)
 
-            for i, file in enumerate(st.session_state["raw_docs"]):
+            for i, file in enumerate(st.session_state["modules"][active_module]["raw_docs"]):
 
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                     tmp.write(file["bytes"])
@@ -325,10 +329,13 @@ with left:
                 combined_text += f"\n\n===== {r['filename']} ====\n\n"
                 combined_text += r["text"] or ""
 
-            st.session_state["document_text"] = combined_text
+            st.session_state["modules"][active_module]["document_text"] = combined_text
             st.session_state["ready_for_llm"] = True
             st.session_state["llm_called"] = False   # reset flag
-    if st.session_state.get("ready_for_llm") and st.session_state.get("document_text"):
+    #if st.session_state.get("ready_for_llm") and st.session_state.get("document_text"):
+    active_module= st.session_state["active_module"]
+    module_data=st.session_state["modules"][active_module]
+    if module_data.get("document_text"):
 
         if not st.session_state.get("llm_called"):
 
@@ -337,7 +344,7 @@ with left:
             with st.spinner("Running Analysis........"):
 
                 data = {
-                    "financial_text": st.session_state["document_text"]
+                    "financial_text": module_data["document_text"]
                 }
                 try:
                     # st.write("Calling LLM API: ",LLM_API_URL)
@@ -354,6 +361,9 @@ with left:
                             llm_response = json.loads(resp.text)
                             company_name = llm_response.get("company_name","Financial Report")
                             html_output = _json_to_html(company_name, llm_response)
+                            active_module = st.session_state["active_module"]
+                            st.session_state["module"][active_module]["response"] = html_output
+                            st.session_state["module"][active_module]["completed"] = True
                             st.session_state["html_output"] = html_output
                             st.session_state["analysis_ready"] = True
                             st.session_state["llm_called"] = True
@@ -401,7 +411,9 @@ with right:
 #                 st.session_state["combined_text"],
 #                 height=500
 #             ) 
-    if st.session_state.get("analysis_ready") and "html_output" in st.session_state:
+    active_module=st.session_state["active_module"]
+    if st.session_state["modules"][active_module]["response"]:
+    #if st.session_state.get("analysis_ready") and "html_output" in st.session_state:
         st.subheader("AI Analysis")
         # left, center, right = st.columns([2, 2, 1])
         # with center:
@@ -426,7 +438,7 @@ with right:
             # )
 
             st.components.v1.html(
-                    st.session_state["html_output"], height=500, scrolling=True)  # type: ignore
+                    st.session_state["modules"][active_module]["response"], height=500, scrolling=True)  # type: ignore
             st.markdown(
                 """
                 <style>
@@ -443,6 +455,34 @@ with right:
                 """,
                 unsafe_allow_html=True
             )    
+
+
+
+# ================== FINAL SUBMIT ==================
+
+st.markdown("---")
+
+left_space, right_button = st.columns([4, 1])
+
+with right_button:
+    if st.button("Submit All Analysis"):
+        modules = st.session_state["modules"]
+        all_completed = all(m.get("completed") for m in modules.values())
+
+        if not all_completed:
+            st.error("Please complete all modules before submitting")
+        else:
+            final_data = {}
+
+            for module_name, module_data in modules.items():
+                final_data[module_name] = {
+                    "prompt": module_data.get("prompt"),
+                    "response": module_data.get("response")
+                }
+
+            st.success("All modules submitted successfully ✅")
+            st.json(final_data)
+
 
 
 st.markdown("""
@@ -485,39 +525,3 @@ div[data-testid="stFileUploader"] button[kind="secondary"]::after {
 }
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-        
-
-
-
-st.markdown("---")
-
-left_space, right_button = st.columns([4, 1])
-
-with right_button:
-    if st.button("Submit All Analysis"):
-        modules = st.session_state["modules"]
-        all_completed = all(m.get("completed") for m in modules.values())
-
-        if not all_completed:
-            st.error("Please complete all modules before submitting")
-        else:
-            final_data = {}
-
-            for module_name, module_data in modules.items():
-                final_data[module_name] = {
-                    "prompt": module_data.get("prompt"),
-                    "response": module_data.get("response")
-                }
-
-            st.success("All modules submitted successfully ✅")
-            st.json(final_data)
